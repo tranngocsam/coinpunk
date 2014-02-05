@@ -23,8 +23,28 @@ class App < Sinatra::Base
     not_found { slim :not_found }  if production?
   end
 
+  use Rack::Protection::AuthenticityToken
+  use Rack::Recaptcha, :public_key => $config['recaptcha_public_key'], :private_key => $config['recaptcha_private_key']
+  helpers Rack::Recaptcha::Helpers
+
+  Pony.options = {
+    :from => 'noreply@telesocial.com',
+    :via => :smtp,
+    :via_options => {
+      :address              => 'smtp.gmail.com',
+      :port                 => '587',
+      :enable_starttls_auto => true,
+      :user_name            => ENV["MAILER_USERNAME"],
+      :password             => ENV["MAILER_PASSWORD"],
+      :authentication       => :plain, 
+      :domain               => "telesocial.com"
+    }
+  }
+
   before do
     @timezone_name = session[:timezone]
+    session[:csrf] = session["_csrf_token"] ||= SecureRandom.hex(16)
+    env["HTTP_HTTP_X_CSRF_TOKEN"]
 
     if @timezone_name
       @timezone = TZInfo::Timezone.get(@timezone_name)
@@ -98,11 +118,16 @@ class App < Sinatra::Base
   end
 
   post '/accounts/signin' do
-    if Account.valid_login? params[:email], params[:password]
+    if recaptcha_valid? && Account.valid_login?(params[:email], params[:password])
       session[:account_email] = params[:email]
       redirect '/dashboard'
     else
-      flash[:error] = 'Invalid login.'
+      if recaptcha_valid?
+        flash[:error] = 'Invalid login.'
+      else
+        flash[:error] = "Invalid captcha."
+      end
+
       redirect '/'
     end
   end
@@ -111,19 +136,30 @@ class App < Sinatra::Base
     dashboard_if_signed_in
 
     @account = Account.new email: params[:email], password: params[:password]
-    if @account.valid?
+    if recaptcha_valid? && params[:email] == params[:confirm_email] && params[:password] == params[:confirm_password]
+      if @account.valid?
 
-      DB.transaction do
-        @account.save
-        address = bitcoin_rpc 'getaccountaddress', params[:email]
-        @account.add_receive_address name: 'Default', bitcoin_address: address
+        DB.transaction do
+          @account.save
+          address = bitcoin_rpc 'getaccountaddress', params[:email]
+          @account.add_receive_address name: 'Default', bitcoin_address: address
+        end
+
+        Pony.mail(:to => @account.email, :subject => "Welcome to Telesocial", :html_body => (slim :"pony/welcome"))
+        session[:account_email] = @account.email
+        flash[:success] = 'Account successfully created!'
+        redirect '/dashboard'
+      else
+        slim :'accounts/new'
+      end
+    else
+      if recaptcha_valid?
+        flash[:error] = "Confirm email or confirm password does not match."
+      else
+        flash[:error] = "Invalid captcha."
       end
 
-      session[:account_email] = @account.email
-      flash[:success] = 'Account successfully created!'
-      redirect '/dashboard'
-    else
-      slim :'accounts/new'
+      slim :"accounts/new"
     end
   end
 

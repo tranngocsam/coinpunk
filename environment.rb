@@ -5,6 +5,7 @@ Encoding.default_internal = 'UTF-8'
 
 require 'yaml'
 require 'json'
+require "rack/protection"
 
 Bundler.require
 Bundler.require :development if ENV['RACK_ENV'] == 'development'

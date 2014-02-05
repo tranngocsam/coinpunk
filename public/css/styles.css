@@ -14,3 +14,8 @@ body {
 #balance_usd small {
   font-size: 8pt;
 }
+
+.recaptcha {
+  margin: 0 auto;
+  width: 310px;
+}

@@ -7,8 +7,11 @@
     .span12
       form method="POST" action="/accounts/signin"
         fieldset
+          div style="dipslay:none"
+            input type="hidden" name="authenticity_token" value="#{session[:csrf]}"
           div: input name="email" type="text" placeholder="Your email"
           div: input name="password" type="password" placeholder="Your password"
+          div.recaptcha== recaptcha_tag :challenge
           div: button class="btn btn-large btn-success" href="#" style="margin-top: 10px" Login
   .row
     .span12

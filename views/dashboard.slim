@@ -65,6 +65,8 @@ javascript:
         h4 Create New Receive Address
 
         form method="POST" action="/addresses/create"
+          div style="dipslay:none"
+            input type="hidden" name="authenticity_token" value="#{session[:csrf]}"
           p Descriptive name <small>(optional but recommended)</small>:
           div: input name="name" type="text" placeholder="Web Site Donations"
           button.btn.btn-primary Create Address
@@ -73,6 +75,8 @@ javascript:
         h3 Send Bitcoins:
 
         form method="POST" action="/send"
+          div style="dipslay:none"
+            input type="hidden" name="authenticity_token" value="#{session[:csrf]}"
           p Address to send to:
           input name="tobitcoinaddress" type="text" placeholder="Bitcoin Address" style="width: 320px"
 

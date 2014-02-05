@@ -14,6 +14,8 @@ gem 'tzinfo'
 gem 'rack-time-zone-header'
 gem 'puma', require: nil
 gem 'vegas', require: nil
+gem "rack-protection"
+gem 'rack-recaptcha', :require => 'rack/recaptcha'
 
 platform :mri do
   gem 'pg',      group: :postgres
@@ -21,8 +23,8 @@ platform :mri do
   gem 'sqlite3', group: :sqlite
   
   group :development, :test do
-    gem 'pry'
-    gem 'pry-debugger'
+    #gem 'pry'
+    #gem 'pry-debugger'
   end
 end
 
