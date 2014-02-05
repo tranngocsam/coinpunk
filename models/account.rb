@@ -30,6 +30,18 @@ class Account < Sequel::Model
     values[:password] = BCrypt::Password.create plaintext, cost: (self.class.bcrypt_cost || BCrypt::Engine::DEFAULT_COST)
   end
 
+  def generate_password_token
+    token = SecureRandom.hex(16)
+    self.update(:password_token => token)
+    token
+  end
+
+  def reset_password(new_password)
+    self.password = new_password
+    self.password_token = nil
+    self.save
+  end
+
   def validate
     super
 

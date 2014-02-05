@@ -43,6 +43,7 @@ class App < Sinatra::Base
 
   before do
     @timezone_name = session[:timezone]
+    @host_url = $config["host_url"]
     session[:csrf] = session["_csrf_token"] ||= SecureRandom.hex(16)
     env["HTTP_HTTP_X_CSRF_TOKEN"]
 
@@ -160,6 +161,61 @@ class App < Sinatra::Base
       end
 
       slim :"accounts/new"
+    end
+  end
+
+  get "/accounts/forgot-password" do
+    slim :"accounts/forgot_password"
+  end
+
+  post "/accounts/forgot-password" do
+    if recaptcha_valid? && params[:email].kind_of?(String) && params[:email] =~ Account::EMAIL_VALIDATION_REGEX
+      account = Account[email: params[:email]]
+
+      if account
+        @token = account.generate_password_token
+        Pony.mail(:to => account.email, :subject => "Password reset instruction", :html_body => (slim :"pony/forgot_password"))
+      end
+
+      flash[:success] = "A reset password instruction was sent to your email, please check it to reset your password"
+      redirect "/"
+    else
+      if recaptcha_valid?
+        flash[:error] = "Invalid email."
+      else
+        flash[:error] = "Invalid captcha"
+      end
+
+      slim :"accounts/forgot_password"
+    end
+  end
+
+  get "/accounts/reset-password/:token" do
+    @token = params[:token]
+    slim :"accounts/reset_password"
+  end
+
+  post "/accounts/reset-password" do
+    token = params[:token]
+
+    if recaptcha_valid? && params[:password] == params[:confirm_password]
+      account = Account[password_token: token]
+      if account && account.updated_at.to_time.to_i > Time.now.to_i - $config["password_token_lifetime"].to_i*60
+        account.reset_password(params[:password])
+        flash[:success] = "Your password was changed successfully"
+        redirect "/"
+      else
+        flash[:error] = "Token was expired"
+        redirect "/"
+      end
+    else
+      if recaptcha_valid?
+        flash[:error] = "Confirm password does not match"
+      else
+        flash[:error] = "Invalid captcha"
+      end
+
+      slim :"accounts/reset_password"
     end
   end
 
