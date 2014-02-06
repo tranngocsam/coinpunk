@@ -1,5 +1,6 @@
 class Account < Sequel::Model
   MINIMUM_PASSWORD_LENGTH = 5
+  MINIMUM_PASSWORD_HINT_LENGTH = 2
   EMAIL_VALIDATION_REGEX = /\A[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]+\z/i
 
   one_to_many :receive_addresses
@@ -57,6 +58,10 @@ class Account < Sequel::Model
 
     if values[:password].nil? || (@password_length && @password_length < MINIMUM_PASSWORD_LENGTH)
       errors.add :password, "password must be at least #{MINIMUM_PASSWORD_LENGTH} characters" 
+    end
+
+    if values[:password_hint].nil? || values[:password_hint].empty? || values[:password_hint].length < MINIMUM_PASSWORD_HINT_LENGTH
+      errors.add :password_hint, "password hint must be at least #{MINIMUM_PASSWORD_HINT_LENGTH} characters"
     end
   end
 end

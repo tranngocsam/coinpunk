@@ -34,8 +34,8 @@ class App < Sinatra::Base
       :address              => 'smtp.gmail.com',
       :port                 => '587',
       :enable_starttls_auto => true,
-      :user_name            => ENV["MAILER_USERNAME"],
-      :password             => ENV["MAILER_PASSWORD"],
+      :user_name            => $config["mailer_username"],
+      :password             => $config["mailer_password"],
       :authentication       => :plain, 
       :domain               => "telesocial.com"
     }
@@ -45,7 +45,6 @@ class App < Sinatra::Base
     @timezone_name = session[:timezone]
     @host_url = $config["host_url"]
     session[:csrf] = session["_csrf_token"] ||= SecureRandom.hex(16)
-    env["HTTP_HTTP_X_CSRF_TOKEN"]
 
     if @timezone_name
       @timezone = TZInfo::Timezone.get(@timezone_name)
@@ -119,16 +118,20 @@ class App < Sinatra::Base
   end
 
   post '/accounts/signin' do
-    if recaptcha_valid? && Account.valid_login?(params[:email], params[:password])
+    is_captcha_valid = recaptcha_valid?
+
+    if is_captcha_valid && Account.valid_login?(params[:email], params[:password])
       session[:account_email] = params[:email]
       redirect '/dashboard'
     else
-      if recaptcha_valid?
+      if is_captcha_valid
         flash[:error] = 'Invalid login.'
       else
         flash[:error] = "Invalid captcha."
       end
 
+      # Not sure what's wrong here, but if we don't have this line, message will not be displayed.
+      flash[:error]
       redirect '/'
     end
   end
@@ -136,8 +139,10 @@ class App < Sinatra::Base
   post '/accounts/create' do
     dashboard_if_signed_in
 
-    @account = Account.new email: params[:email], password: params[:password]
-    if recaptcha_valid? && params[:email] == params[:confirm_email] && params[:password] == params[:confirm_password]
+    @account = Account.new email: params[:email], password: params[:password], :password_hint => params[:password_hint]
+    is_captcha_valid = recaptcha_valid?
+    if is_captcha_valid && params[:email] == params[:confirm_email] && params[:password] == params[:confirm_password] &&
+          params[:password_hint] == params[:confirm_password_hint]
       if @account.valid?
 
         DB.transaction do
@@ -154,12 +159,20 @@ class App < Sinatra::Base
         slim :'accounts/new'
       end
     else
-      if recaptcha_valid?
-        flash[:error] = "Confirm email or confirm password does not match."
+      if is_captcha_valid
+        if params[:email] != params[:confirm_email]
+          flash[:error] = "Confirm email does not match."
+        elsif params[:password] != params[:confirm_password]
+          flash[:error] = "Confirm password does not match."
+        else
+          flash[:error] = "Confirm password hint does not match."
+        end
       else
         flash[:error] = "Invalid captcha."
       end
 
+      # Not sure what's wrong here, but if we don't have this line, message will not be displayed.
+      flash[:error]
       slim :"accounts/new"
     end
   end
@@ -169,23 +182,35 @@ class App < Sinatra::Base
   end
 
   post "/accounts/forgot-password" do
-    if recaptcha_valid? && params[:email].kind_of?(String) && params[:email] =~ Account::EMAIL_VALIDATION_REGEX
+    is_captcha_valid = recaptcha_valid?
+    if is_captcha_valid && params[:password_hint].kind_of?(String) && 
+          params[:email].kind_of?(String) && params[:email] =~ Account::EMAIL_VALIDATION_REGEX
       account = Account[email: params[:email]]
 
-      if account
+      if account && account.password_hint.downcase == params[:password_hint].downcase
         @token = account.generate_password_token
         Pony.mail(:to => account.email, :subject => "Password reset instruction", :html_body => (slim :"pony/forgot_password"))
-      end
 
-      flash[:success] = "A reset password instruction was sent to your email, please check it to reset your password"
-      redirect "/"
+        flash[:success] = "A reset password instruction was sent to your email, please check it to reset your password"
+        redirect "/"
+      elsif account
+        flash[:error] = "Password hint is not correct"
+        flash[:error]
+        slim :"accounts/forgot_password"
+      else
+        # Puts this message here, so that no one can find out that the email is in the system or not.
+        flash[:success] = "A reset password instruction was sent to your email, please check it to reset your password"
+        redirect "/"
+      end
     else
-      if recaptcha_valid?
+      if is_captcha_valid
         flash[:error] = "Invalid email."
       else
         flash[:error] = "Invalid captcha"
       end
 
+      # Not sure what's wrong here, but if we don't have this line, message will not be displayed.
+      flash[:error]
       slim :"accounts/forgot_password"
     end
   end
@@ -197,8 +222,9 @@ class App < Sinatra::Base
 
   post "/accounts/reset-password" do
     token = params[:token]
+    is_captcha_valid = recaptcha_valid?
 
-    if recaptcha_valid? && params[:password] == params[:confirm_password]
+    if is_captcha_valid && params[:password] == params[:confirm_password]
       account = Account[password_token: token]
       if account && account.updated_at.to_time.to_i > Time.now.to_i - $config["password_token_lifetime"].to_i*60
         account.reset_password(params[:password])
@@ -206,15 +232,18 @@ class App < Sinatra::Base
         redirect "/"
       else
         flash[:error] = "Token was expired"
+        flash[:error]
         redirect "/"
       end
     else
-      if recaptcha_valid?
+      if is_captcha_valid
         flash[:error] = "Confirm password does not match"
       else
         flash[:error] = "Invalid captcha"
       end
 
+      # Not sure what's wrong here, but if we don't have this line, message will not be displayed.
+      flash[:error]
       slim :"accounts/reset_password"
     end
   end
