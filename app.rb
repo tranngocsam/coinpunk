@@ -3,8 +3,6 @@ require File.join(File.expand_path(File.dirname(__FILE__)), 'environment.rb')
 class App < Sinatra::Base
   MINIMUM_SEND_CONFIRMATIONS = 0
 
-  register Sinatra::Flash
-
   configure do
     $bitcoin = Silkroad::Client.new(
       $config['bitcoind_rpcuser'],
@@ -23,6 +21,7 @@ class App < Sinatra::Base
     not_found { slim :not_found }  if production?
   end
 
+  use Rack::Flash
   use Rack::Protection::AuthenticityToken
   use Rack::Recaptcha, :public_key => $config['recaptcha_public_key'], :private_key => $config['recaptcha_private_key']
   helpers Rack::Recaptcha::Helpers

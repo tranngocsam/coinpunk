@@ -8,7 +8,6 @@ gem 'sidekiq'
 gem 'silkroad', '~> 0.0.1'
 gem 'bcrypt-ruby', require: 'bcrypt'
 gem 'slim'
-gem 'sinatra-flash', require: 'sinatra/flash'
 gem 'pony'
 gem 'tzinfo'
 gem 'rack-time-zone-header'
@@ -16,6 +15,7 @@ gem 'puma', require: nil
 gem 'vegas', require: nil
 gem "rack-protection"
 gem 'rack-recaptcha', :require => 'rack/recaptcha'
+gem "rack-flash3"
 
 platform :mri do
   gem 'pg',      group: :postgres
