@@ -22,6 +22,9 @@ class App < Sinatra::Base
   end
 
   use Rack::Flash
+  use Rack::Protection
+  use Rack::Protection::FormToken
+  use Rack::Protection::RemoteReferrer
   use Rack::Protection::AuthenticityToken
   use Rack::Recaptcha, :public_key => $config['recaptcha_public_key'], :private_key => $config['recaptcha_private_key']
   helpers Rack::Recaptcha::Helpers
