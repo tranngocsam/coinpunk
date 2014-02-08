@@ -7,6 +7,7 @@ require 'yaml'
 require 'json'
 require "rack/protection"
 require "rack-flash"
+require "cgi"
 
 Bundler.require
 Bundler.require :development if ENV['RACK_ENV'] == 'development'

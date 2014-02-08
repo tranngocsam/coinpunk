@@ -25,6 +25,7 @@ class App < Sinatra::Base
   use Rack::Protection
   use Rack::Protection::FormToken
   use Rack::Protection::RemoteReferrer
+  use Rack::Protection::EscapedParams
   use Rack::Protection::AuthenticityToken
   use Rack::Recaptcha, :public_key => $config['recaptcha_public_key'], :private_key => $config['recaptcha_private_key']
   helpers Rack::Recaptcha::Helpers
@@ -259,13 +260,12 @@ class App < Sinatra::Base
   end
 
   post '/set_timezone' do
-    session[:timezone] = params[:name]
+    session[:timezone] = CGI.unescapeHTML(params[:name])
   end
 
   get '/signout' do
     require_login
-    session[:account_email] = nil
-    session[:timezone] = nil
+    session.clear
     redirect '/'
   end
 
