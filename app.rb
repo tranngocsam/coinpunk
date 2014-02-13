@@ -47,6 +47,7 @@ class App < Sinatra::Base
   before do
     @timezone_name = session[:timezone]
     @host_url = $config["host_url"]
+    @use_ssl = $config["ssl"]
     session[:csrf] = session["_csrf_token"] ||= SecureRandom.hex(16)
 
     if @timezone_name

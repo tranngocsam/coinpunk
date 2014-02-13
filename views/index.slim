@@ -11,7 +11,7 @@
             input type="hidden" name="authenticity_token" value="#{session[:csrf]}"
           div: input name="email" type="text" placeholder="Your email"
           div: input name="password" type="password" placeholder="Your password"
-          div.recaptcha== recaptcha_tag :challenge
+          div.recaptcha== recaptcha_tag :challenge, :ssl => @use_ssl
           div: button class="btn btn-large btn-success" href="#" style="margin-top: 10px" Login
   .row
     .span12
